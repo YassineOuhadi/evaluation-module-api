@@ -27,4 +27,17 @@ public class ChoiceQuestion extends Question implements Serializable {
     private boolean isAtLeastTwoOptions() {
         return options != null && options.size() >= 2;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ChoiceQuestion question = (ChoiceQuestion) o;
+        return super.getId() != null ? super.getId().equals(question.getId()) : false;
+    }
+
+    @Override
+    public int hashCode() {
+        return super.getId() != null ? super.getId().hashCode() : 0;
+    }
 }

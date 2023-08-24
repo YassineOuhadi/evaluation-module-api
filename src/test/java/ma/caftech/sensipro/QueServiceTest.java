@@ -30,7 +30,7 @@ public class QueServiceTest {
         requestMap.put("code", "ABC001");
         requestMap.put("question", "Is this a true/false question?");
         requestMap.put("correct", true);
-        ResponseEntity<String> response = queService.CreateQue(requestMap);
+        ResponseEntity<String> response = queService.createQuestion(requestMap);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
@@ -38,7 +38,7 @@ public class QueServiceTest {
     public void testCreateQue_MissingFields() {
         Map<String, Object> requestMap = new HashMap<>();
         requestMap.put("type", "TRUE_FALSE");
-        ResponseEntity<String> response = queService.CreateQue(requestMap);
+        ResponseEntity<String> response = queService.createQuestion(requestMap);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
@@ -50,7 +50,7 @@ public class QueServiceTest {
         requestMap.put("code", "ABC001");
         requestMap.put("question", "Is this a true/false question?");
         requestMap.put("correct", true);
-        ResponseEntity<String> response = queService.CreateQue(requestMap);
+        ResponseEntity<String> response = queService.createQuestion(requestMap);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 }

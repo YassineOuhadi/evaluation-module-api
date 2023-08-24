@@ -27,6 +27,14 @@ public class Course implements Serializable {
     @Column(name = "name")
     private String name;
 
+    @Column(columnDefinition = "integer default 6")
+    private Integer quizNumberQuestions; // Mini quiz in cookies
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campaign_id")
+    private Campaign campaign;
+
     @JsonIgnore
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

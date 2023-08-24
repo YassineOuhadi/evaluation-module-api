@@ -1,6 +1,8 @@
 package ma.caftech.sensipro.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
@@ -26,7 +28,7 @@ public class Language implements Serializable {
     @Column(name = "name")
     private String name;
 
-    @JsonIgnore
     @OneToMany(mappedBy = "language", cascade = CascadeType.ALL)
+    @JsonBackReference
     private List<Question> questions;
 }

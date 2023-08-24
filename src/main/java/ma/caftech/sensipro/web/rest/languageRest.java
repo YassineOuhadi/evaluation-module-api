@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping(path = "/language")
-public class LanguageRest {
+public class languageRest {
 
     @Autowired
     LanguageService langService;
