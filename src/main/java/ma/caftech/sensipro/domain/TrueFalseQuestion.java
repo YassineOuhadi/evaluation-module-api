@@ -17,4 +17,17 @@ public class TrueFalseQuestion extends Question implements Serializable {
 
     @Column(name = "is_correct", nullable = false)
     private boolean isCorrect;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TrueFalseQuestion question = (TrueFalseQuestion) o;
+        return super.getId() != null ? super.getId().equals(question.getId()) : false;
+    }
+
+    @Override
+    public int hashCode() {
+        return super.getId() != null ? super.getId().hashCode() : 0;
+    }
 }

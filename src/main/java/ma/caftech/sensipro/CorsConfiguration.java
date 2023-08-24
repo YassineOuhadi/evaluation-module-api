@@ -27,6 +27,12 @@ public class CorsConfiguration {
                         .allowedOrigins("http://localhost:4200") // Replace with the actual domain where your Angular app is hosted
                         .allowedMethods("GET", "POST", "PUT", "DELETE")
                         .allowedHeaders("*");
+
+                registry.addMapping("/exam/**")
+                        .allowedOrigins("http://localhost:4200") // Replace with the actual domain where your Angular app is hosted
+                        .allowedMethods("GET", "POST", "PUT", "DELETE")
+                        .allowedHeaders("*");
+
             }
         };
     }

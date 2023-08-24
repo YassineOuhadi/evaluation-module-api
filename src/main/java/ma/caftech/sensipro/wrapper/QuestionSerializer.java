@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+
 import ma.caftech.sensipro.domain.*;
 
 public class QuestionSerializer extends JsonSerializer<Question> {
@@ -21,6 +23,8 @@ public class QuestionSerializer extends JsonSerializer<Question> {
         jsonGenerator.writeStringField("incorrectAnswerTipText", question.getIncorrectAnswerTipText());
 
         jsonGenerator.writeBooleanField("isWithTiming", question.isWithTiming());
+        jsonGenerator.writeNumberField("duration", question.getDuration());
+
         jsonGenerator.writeNumberField("duration", question.getDuration());
 
         if (question instanceof ChoiceQuestion) {
@@ -53,6 +57,18 @@ public class QuestionSerializer extends JsonSerializer<Question> {
                 jsonGenerator.writeEndArray();
             }
         }
+
+        jsonGenerator.writeArrayFieldStart("courses");
+        for (Course course : question.getCourses()) {
+            jsonGenerator.writeStartObject();
+            jsonGenerator.writeNumberField("id", course.getId());
+            jsonGenerator.writeStringField("name", course.getName());
+            jsonGenerator.writeEndObject();
+        }
+        jsonGenerator.writeEndArray();
+
+        Map<String, Object> languageInfo = question.getLanguageInfo();
+        jsonGenerator.writeObjectField("language", languageInfo);
 
         jsonGenerator.writeEndObject();
     }
