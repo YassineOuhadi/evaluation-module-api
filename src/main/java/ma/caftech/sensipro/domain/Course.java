@@ -2,8 +2,6 @@ package ma.caftech.sensipro.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.DynamicUpdate;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -12,8 +10,6 @@ import java.util.Set;
 
 @Data
 @Entity
-@DynamicUpdate
-@DynamicInsert
 @Table(name = "course")
 public class Course implements Serializable {
 
@@ -21,19 +17,17 @@ public class Course implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
+    @Column(name = "id", unique = true)
     private Integer id;
 
     @Column(name = "name")
     private String name;
 
     @Column(columnDefinition = "integer default 6")
-    private Integer quizNumberQuestions; // Mini quiz in cookies
+    private Integer numberOfQuestionsInQuiz;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "campaign_id")
-    private Campaign campaign;
+    @ManyToMany(fetch = FetchType.LAZY, mappedBy = "courses")
+    private Set<Campaign> campaigns = new HashSet<>();
 
     @JsonIgnore
     @ManyToMany(fetch = FetchType.LAZY)
@@ -43,4 +37,17 @@ public class Course implements Serializable {
             inverseJoinColumns = @JoinColumn(name = "question_id")
     )
     private Set<Question> questions = new HashSet<>();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Course course = (Course) o;
+        return getId() != null ? getId().equals(course.getId()) : false;
+    }
+
+    @Override
+    public int hashCode() {
+        return getId() != null ? getId().hashCode() : 0;
+    }
 }

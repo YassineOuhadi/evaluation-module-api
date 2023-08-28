@@ -1,13 +1,14 @@
 package ma.caftech.sensipro.service.Impl;
 
 import lombok.extern.slf4j.Slf4j;
-import ma.caftech.sensipro.FactoryPattern.QuestionFactory;
 import ma.caftech.sensipro.domain.*;
 import ma.caftech.sensipro.domain.id.CampaignUserId;
-import ma.caftech.sensipro.domain.id.ExamQuestionId;
+import ma.caftech.sensipro.dto.ChoiceQuestionDTO;
+import ma.caftech.sensipro.dto.FillBlanksQuestionDTO;
+import ma.caftech.sensipro.dto.QuestionDTO;
+import ma.caftech.sensipro.dto.TrueFalseQuestionDTO;
 import ma.caftech.sensipro.repository.*;
 import ma.caftech.sensipro.service.service.ExamService;
-import ma.caftech.sensipro.wrapper.QuestionWrapper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -16,11 +17,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ma.caftech.sensipro.constants.SystemConstants;
-import ma.caftech.sensipro.utils.SystemUtils;
+
 import java.time.LocalDateTime;
 import java.util.*;
-import java.time.Duration;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -39,26 +38,21 @@ public class ExamServiceImpl implements ExamService {
     CampaignUserRepository campaignUserRepository;
 
     @Autowired
-    ExamQuestionRepository examQuestionRepository;
-
-    @Autowired
     QuestionRepository questionRepository;
 
     @Override
     public ResponseEntity<Map<String, Object>> beginExam(Map<String, Object> requestMap) {
         Integer userId = (Integer) requestMap.get("userId");
         Integer campaignId = (Integer) requestMap.get("campaignId");
-        //String machineName = (String) requestMap.get("machineName");
-        //String browser = (String) requestMap.get("browser");
 
-        Optional<User> optionalUser = userRepository.findById(userId);
+        Optional<AsUser> optionalUser = userRepository.findById(userId);
         Optional<Campaign> optionalCampaign = campaignRepository.findById(campaignId);
 
         if (optionalUser.isEmpty() || optionalCampaign.isEmpty()) {
             return ResponseEntity.badRequest().body(Collections.singletonMap("error", "User or campaign not found."));
         }
 
-        User user = optionalUser.get();
+        AsUser user = optionalUser.get();
         Campaign campaign = optionalCampaign.get();
 
         CampaignUserId campaignUserId = new CampaignUserId();
@@ -72,79 +66,49 @@ public class ExamServiceImpl implements ExamService {
         if(campaignUser.isArchived()) return ResponseEntity.badRequest().body(Collections.singletonMap("error", "User has already archived this campaign."));
         if(!campaignUser.isCompleted()) return ResponseEntity.badRequest().body(Collections.singletonMap("error", "User has not completed the campaign."));
 
-        // We are certain that the user has not archived the final exam
-        Optional<FinalExam> existingSession = examSessionRepository.findSession(user, campaign, false);
-        FinalExam quizSession;
+        //Optional<FinalExam> existingSession = examSessionRepository.findSession(user, campaign, false);
 
-        if (existingSession.isPresent()) {
-            quizSession = existingSession.get();
+        //test nb attempt
 
-            LocalDateTime now = LocalDateTime.now();
-            Duration durationSinceStart = Duration.between(quizSession.getStartTime(), now);
-            if (durationSinceStart.toMinutes() >= campaign.getTestOpenDuration()) {
-                markQuizSessionAsCompleted(quizSession);
-                return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Quiz session has expired."));
-            }
-            /*
-            int tentativeCount = quizSession.getTentatives().size();
-            if (tentativeCount >= campaign.getExamNumberTentatives()) {
-                return ResponseEntity.badRequest().body(Collections.singletonMap("error", "The maximum number of tentatives allowed is " + campaign.getExamNumberTentatives()));
-            }
-            Tentative lastTentative = null;
-            if (tentativeCount > 0) {
-                lastTentative = quizSession.getTentatives().get(tentativeCount - 1);
-                if (lastTentative.isActivate()) {
-                    return ResponseEntity.badRequest().body(Collections.singletonMap("error", "An active tentative already exists."));
-                }
-            }
-            */
-        } else {
-            Optional<FinalExam> lastExamSession = examSessionRepository.findLastExamSessionByUserAndCampaign(user, campaign);
-            if(lastExamSession.isPresent()) {
-                FinalExam lastExam = lastExamSession.get();
-                LocalDateTime startTime = lastExam.getStartTime();
-                LocalDateTime now = LocalDateTime.now();
-                Duration timeSinceStart = Duration.between(startTime, now);
-                int retryTestDurationHours = campaign.getRetryTestDuration();
-                Duration maxAllowedDuration = Duration.ofHours(retryTestDurationHours);
-                if (timeSinceStart.compareTo(maxAllowedDuration) < 0) {
-                    return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Retry test is not allowed yet."));
-                }
-            }
-
-            quizSession = new FinalExam();
-            quizSession.setUser(user);
-            quizSession.setCampaign(campaign);
-            quizSession.setStartTime(LocalDateTime.now());
-            examSessionRepository.save(quizSession);
-        }
-
-        /*
-        Tentative newTentative = new Tentative();
-        newTentative.setFinalExam(quizSession);
-        newTentative.setStartTime(LocalDateTime.now());
-        newTentative.setMachineName(machineName);
-        newTentative.setBrowser(browser);
-        tentativeRepository.save(newTentative);
-        quizSession.getTentatives().add(newTentative);
+        FinalExam quizSession = new FinalExam();
+        quizSession.setUser(user);
+        quizSession.setCampaign(campaign);
+        quizSession.setStartTime(LocalDateTime.now());
         examSessionRepository.save(quizSession);
-         */
 
-        LocalDateTime endDate = quizSession.getStartTime().plusMinutes(campaign.getTestOpenDuration());
-        List<QuestionWrapper> questions = getQuestions(quizSession);
+        List<QuestionDTO> questions = getQuestions(quizSession); // Modified to return QuestionDTO objects
         if (questions.isEmpty()) {
-
-            // make quiz final au cas tous les question snumber fait
             return ResponseEntity.badRequest().body(Collections.singletonMap("error", "No questions available."));
         }
+
         Map<String, Object> response = new HashMap<>();
         response.put("sessionId", quizSession.getId());
-        //response.put("tentativeId", newTentative.getId());
-        response.put("examSessionEndDate", endDate);
-        response.put("questions", questions);  // Add the list of questions to the response
+        //response.put("examSessionEndDate", endDate);
+        response.put("questions", questions);
+        return ResponseEntity.ok(response);
+    }
 
-        // return aussi coutnt of questions and count questions deja fait
+    @Override
+    public ResponseEntity<Map<String, Object>> canUserTakeExam(Integer campaignId, Integer userId) {
+        Optional<AsUser> optionalUser = userRepository.findById(userId);
+        Optional<Campaign> optionalCampaign = campaignRepository.findById(campaignId);
+        if (optionalUser.isEmpty() || optionalCampaign.isEmpty())
+            return ResponseEntity.ok(Collections.singletonMap("isUserCanTakeExam", false));
+        AsUser user = optionalUser.get();
+        Campaign campaign = optionalCampaign.get();
+        CampaignUserId campaignUserId = new CampaignUserId();
+        campaignUserId.setCampaign(campaign.getId());
+        campaignUserId.setUser(user.getId());
 
+        Optional<CampaignUser> optionalCampaignUser = campaignUserRepository.findById(campaignUserId);
+        if (!optionalCampaignUser.isPresent() || optionalCampaignUser.get().isArchived() || !optionalCampaignUser.get().isCompleted())
+            return ResponseEntity.ok(Collections.singletonMap("isUserCanTakeExam", false));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("isUserCanTakeExam", true);
+        //response.put("isContinueExam", isContinue);
+        response.put("totalQuestions", campaign.getNumberOfQuestionsInExam());
+        //if(isContinue) response.put("nbQuestionsAttempted", lastFinalExamSession.get().getExamQuestions().size());
         return ResponseEntity.ok(response);
     }
 
@@ -162,31 +126,17 @@ public class ExamServiceImpl implements ExamService {
                 Question question = questionOptional.get();
                 FinalExam finalExam = finalExamOptional.get();
 
-
-
-
                 if(!finalExam.isCompleted()) {
-
-                    ExamQuestion examQuestion = new ExamQuestion();
-                    examQuestion.setExam(finalExam);
-                    examQuestion.setQuestion(question);
-                    examQuestion.setResponse(null);
-
-                    //finalExam.getUsedQuestions().add(question);
                     finalExam.setEndTime(LocalDateTime.now()); // last activity
                     boolean isCorrect = isResponseCorrect(requestMap);
-                    examQuestion.setCorrect(isCorrect);
 
-                    int totalCorrectAnswers = (int) finalExam.getExamQuestions().stream()
-                            .filter(ExamQuestion::isCorrect)
-                            .count();
+                    double examScorePercentage = finalExam.getExamScore();
+                    int totalCorrectAnswers = (int) (examScorePercentage * finalExam.getCampaign().getNumberOfQuestionsInExam() / 100);
                     if (isCorrect) totalCorrectAnswers++;
-                    double scorePercentage = (double) totalCorrectAnswers / finalExam.getCampaign().getExamNumberQuestions() * 100;
+                    double scorePercentage = (double) totalCorrectAnswers / finalExam.getCampaign().getNumberOfQuestionsInExam() * 100;
                     finalExam.setExamScore(scorePercentage);
 
-                    examQuestionRepository.save(examQuestion);
                     examSessionRepository.save(finalExam);
-                    //tentativeRepository.save(tentative);
                     return new ResponseEntity<>(isCorrect, HttpStatus.OK);
                 }
             }
@@ -196,149 +146,32 @@ public class ExamServiceImpl implements ExamService {
         }
     }
 
-    @Override
-    public ResponseEntity<Map<String, Object>> endExam(Integer examId) {
+    public List<QuestionDTO> getQuestions(FinalExam finalExam) {
         try {
-            log.info("Inside end exam {}", examId);
-            Optional<FinalExam> optionalExamSession = examSessionRepository.findById(examId);
-            if (optionalExamSession.isPresent()) {
-                FinalExam examSession = optionalExamSession.get();
-                markQuizSessionAsCompleted(examSession);
-                CampaignUserId campaignUserId = new CampaignUserId();
-                campaignUserId.setCampaign(examSession.getCampaign().getId());
-                campaignUserId.setUser(examSession.getUser().getId());
-                Optional<CampaignUser> optionalCampaignUser = campaignUserRepository.findById(campaignUserId);
-                if(optionalCampaignUser.isPresent()) {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("score", examSession.getExamScore());
-                    response.put("isArchived", optionalCampaignUser.get().isArchived());
-                    return ResponseEntity.ok(response);
-                }
-            } else {
-                return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Exam not found."));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return ResponseEntity.internalServerError().body(Collections.singletonMap("error", SystemConstants.SOMETHING_WENT_WRONG));
-    }
-
-    @Override
-    public ResponseEntity<Map<String, Object>> canUserTakeExam(Integer campaignId, Integer userId) {
-        Optional<User> optionalUser = userRepository.findById(userId);
-        Optional<Campaign> optionalCampaign = campaignRepository.findById(campaignId);
-        if (optionalUser.isEmpty() || optionalCampaign.isEmpty())
-            return ResponseEntity.ok(Collections.singletonMap("isUserCanTakeExam", false));
-        User user = optionalUser.get();
-        Campaign campaign = optionalCampaign.get();
-        CampaignUserId campaignUserId = new CampaignUserId();
-        campaignUserId.setCampaign(campaign.getId());
-        campaignUserId.setUser(user.getId());
-
-        Optional<CampaignUser> optionalCampaignUser = campaignUserRepository.findById(campaignUserId);
-        if (!optionalCampaignUser.isPresent() || optionalCampaignUser.get().isArchived() || !optionalCampaignUser.get().isCompleted())
-            return ResponseEntity.ok(Collections.singletonMap("isUserCanTakeExam", false));
-
-        // We are certain that the user has not archived the final exam
-        Optional<FinalExam> existingSession = examSessionRepository.findSession(user, campaign, false);
-        if (existingSession.isPresent()) {
-            FinalExam quizSession = existingSession.get();
-            LocalDateTime now = LocalDateTime.now();
-            Duration durationSinceStart = Duration.between(quizSession.getStartTime(), now);
-            if (durationSinceStart.toMinutes() >= campaign.getTestOpenDuration()) {
-                markQuizSessionAsCompleted(quizSession);
-                return ResponseEntity.ok(Collections.singletonMap("isUserCanTakeExam", false)); //Quiz session has expired
-            }
-        } else {
-            Optional<FinalExam> lastExamSession = examSessionRepository.findLastExamSessionByUserAndCampaign(user, campaign);
-            if (lastExamSession.isPresent()) {
-                FinalExam lastExam = lastExamSession.get();
-                LocalDateTime startTime = lastExam.getStartTime();
-                LocalDateTime now = LocalDateTime.now();
-                Duration timeSinceStart = Duration.between(startTime, now);
-                int retryTestDurationHours = campaign.getRetryTestDuration();
-                Duration maxAllowedDuration = Duration.ofHours(retryTestDurationHours);
-                if (timeSinceStart.compareTo(maxAllowedDuration) < 0) {
-                    return ResponseEntity.ok(Collections.singletonMap("isUserCanTakeExam", false)); //Retry test is not allowed yet
-                }
-            }
-        }
-
-        boolean isContinue ;
-        Optional<FinalExam> lastFinalExamSession = examSessionRepository.findLastExamSessionByUserAndCampaign(user, campaign);
-        if (lastFinalExamSession.isPresent()) {
-            isContinue = !lastFinalExamSession.get().isCompleted(); // continue,retry
-        } else {
-            isContinue = false; // start
-        }
-        Map<String, Object> response = new HashMap<>();
-        response.put("isUserCanTakeExam", true);
-        response.put("isContinueExam", isContinue);
-        response.put("totalQuestions", campaign.getExamNumberQuestions());
-        if(isContinue) response.put("nbQuestionsAttempted", lastFinalExamSession.get().getExamQuestions().size());
-        return ResponseEntity.ok(response);
-    }
-
-    private void markQuizSessionAsCompleted(FinalExam quizSession) {
-        quizSession.setCompleted(true);
-        //quizSession.getUsedQuestions().clear();
-        LocalDateTime now = LocalDateTime.now();
-        quizSession.setEndTime(now);
-        handleCampaignArchiveStatus(quizSession);
-        examSessionRepository.save(quizSession);
-    }
-
-    private void handleCampaignArchiveStatus(FinalExam quizSession) {
-        Optional<FinalExam> lastExamSession = examSessionRepository.findLastExamSessionByUserAndCampaign(quizSession.getUser(), quizSession.getCampaign());
-        CampaignUserId campaignUserId = new CampaignUserId();
-        campaignUserId.setCampaign(quizSession.getCampaign().getId());
-        campaignUserId.setUser(quizSession.getUser().getId());
-        Optional<CampaignUser> optionalCampaignUser = campaignUserRepository.findById(campaignUserId);
-        if(optionalCampaignUser.isPresent()) {
-            CampaignUser campaignUser = optionalCampaignUser.get();
-            if(lastExamSession.get().getExamScore() >= quizSession.getCampaign().getRequiredExamScore())
-                campaignUser.setArchived(true);
-            else campaignUser.setArchived(false);
-            campaignUserRepository.save(campaignUser);
-        }
-    }
-
-    public List<QuestionWrapper> getQuestions(FinalExam finalExam) {
-        try {
-            List<QuestionWrapper> allQuestions = new ArrayList<>();
+            List<QuestionDTO> allQuestions = new ArrayList<>();
 
             List<Question> allQuestionsList = questionRepository.findAll();
 
-            Set<ExamQuestion> usedQuestions = finalExam.getExamQuestions(); // Get questions already used in this exam
-            int usedQuestionCount = usedQuestions.size(); // Count of used questions
-
             Campaign campaign = finalExam.getCampaign();
-            int totalQuestionCount = campaign.getExamNumberQuestions(); // Total number of questions defined in the campaign
-
-            Integer count = totalQuestionCount - usedQuestionCount; // Remaining questions to fetch
-
-            // Filter out the used questions from allQuestionsList
-            List<Question> questions = allQuestionsList.stream()
-                    .filter(question -> !usedQuestions.contains(question))
-                    .collect(Collectors.toList());
+            Integer totalQuestionCount = campaign.getNumberOfQuestionsInExam(); // Total number of questions defined in the campaign
 
             Random random = new Random();
-            for (int i = questions.size() - 1; i > 0; i--) {
+            for (int i = allQuestionsList.size() - 1; i > 0; i--) {
                 int j = random.nextInt(i + 1);
-                Question temp = questions.get(i);
-                questions.set(i, questions.get(j));
-                questions.set(j, temp);
+                Question temp = allQuestionsList.get(i);
+                allQuestionsList.set(i, allQuestionsList.get(j));
+                allQuestionsList.set(j, temp);
             }
 
-            if (count != null && count > 0 && count <= questions.size()) {
-                questions = questions.subList(0, count);
-            } else if (count != null && count > questions.size()) {
+            if (totalQuestionCount != null && totalQuestionCount > 0 && totalQuestionCount <= allQuestionsList.size()) {
+                allQuestionsList = allQuestionsList.subList(0, totalQuestionCount);
+            } else if (totalQuestionCount != null && totalQuestionCount > allQuestionsList.size()) {
                 return new ArrayList<>();
             }
 
-            for (Question question : questions) {
-                QuestionFactory.QuestionType type = getQuestionType(question);
-                allQuestions.add(new QuestionWrapper(question, type));
+            for (Question question : allQuestionsList) {
+                QuestionDTO questionDTO = mapQuestionToDTO(question);
+                allQuestions.add(questionDTO);
             }
 
             return allQuestions;
@@ -349,13 +182,13 @@ public class ExamServiceImpl implements ExamService {
         return new ArrayList<>();
     }
 
-    private QuestionFactory.QuestionType getQuestionType(Question question) {
-        if (question instanceof TrueFalseQuestion) {
-            return QuestionFactory.QuestionType.TRUE_FALSE;
-        } else if (question instanceof ChoiceQuestion) {
-            return QuestionFactory.QuestionType.CHOICE;
+    private QuestionDTO mapQuestionToDTO(Question question) {
+        if (question instanceof ChoiceQuestion) {
+            return ChoiceQuestionDTO.fromChoiceQuestionDTO((ChoiceQuestion) question);
+        } else if (question instanceof TrueFalseQuestion) {
+            return TrueFalseQuestionDTO.fromTrueFalseQuestion((TrueFalseQuestion) question);
         } else if (question instanceof FillBlanksQuestion) {
-            return QuestionFactory.QuestionType.FILL_BLANKS;
+            return FillBlanksQuestionDTO.fromFillBlanksQuestion((FillBlanksQuestion) question);
         }
         return null;
     }
@@ -442,4 +275,56 @@ public class ExamServiceImpl implements ExamService {
         }
         return null;
     }
+
+    /*
+    @Override
+    public ResponseEntity<Map<String, Object>> endExam(Integer examId) {
+        try {
+            log.info("Inside end exam {}", examId);
+            Optional<FinalExam> optionalExamSession = examSessionRepository.findById(examId);
+            if (optionalExamSession.isPresent()) {
+                FinalExam examSession = optionalExamSession.get();
+                markQuizSessionAsCompleted(examSession);
+                CampaignUserId campaignUserId = new CampaignUserId();
+                campaignUserId.setCampaign(examSession.getCampaign().getId());
+                campaignUserId.setUser(examSession.getUser().getId());
+                Optional<CampaignUser> optionalCampaignUser = campaignUserRepository.findById(campaignUserId);
+                if(optionalCampaignUser.isPresent()) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("score", examSession.getExamScore());
+                    response.put("isArchived", optionalCampaignUser.get().isArchived());
+                    return ResponseEntity.ok(response);
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Exam not found."));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.internalServerError().body(Collections.singletonMap("error", SystemConstants.SOMETHING_WENT_WRONG));
+    }
+
+    private void markQuizSessionAsCompleted(FinalExam quizSession) {
+        quizSession.setCompleted(true);
+        LocalDateTime now = LocalDateTime.now();
+        quizSession.setEndTime(now);
+        handleCampaignArchiveStatus(quizSession);
+        examSessionRepository.save(quizSession);
+    }
+
+    private void handleCampaignArchiveStatus(FinalExam quizSession) {
+        Optional<FinalExam> lastExamSession = examSessionRepository.findLastExamSessionByUserAndCampaign(quizSession.getUser(), quizSession.getCampaign());
+        CampaignUserId campaignUserId = new CampaignUserId();
+        campaignUserId.setCampaign(quizSession.getCampaign().getId());
+        campaignUserId.setUser(quizSession.getUser().getId());
+        Optional<CampaignUser> optionalCampaignUser = campaignUserRepository.findById(campaignUserId);
+        if(optionalCampaignUser.isPresent()) {
+            CampaignUser campaignUser = optionalCampaignUser.get();
+            if(lastExamSession.get().getExamScore() >= quizSession.getCampaign().getArchivingScore())
+                campaignUser.setArchived(true);
+            else campaignUser.setArchived(false);
+            campaignUserRepository.save(campaignUser);
+        }
+    }
+     */
 }

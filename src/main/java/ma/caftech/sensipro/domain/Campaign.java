@@ -1,33 +1,57 @@
 package ma.caftech.sensipro.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
+@Table(name = "campaign")
 @Data
-public class Campaign {
+public class Campaign implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", unique = true)
     private Integer id;
 
     @Column(columnDefinition = "integer default 11")
-    private Integer examNumberQuestions;
+    private Integer numberOfQuestionsInExam;
 
     @Column(columnDefinition = "integer default 3")
-    private Integer examNumberTentatives;
+    private Integer maxAttemptsAllowed;
 
     @Column(name = "required_exam_score", columnDefinition = "double default 0")
-    private double requiredExamScore; // Required exam score to achieve for archiving (in %)
+    private double archivingScore; // %
 
-    @Column(name = "test_open_duration")
-    private Integer testOpenDuration; // Duration (in minutes) for which the test is open after completion
+    @JsonIgnore
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "rel_campaign__courses",
+            joinColumns = @JoinColumn(name = "campaign_id"),
+            inverseJoinColumns = @JoinColumn(name = "course_id")
+    )
+    private Set<Course> courses = new HashSet<>();
 
-    @Column(name = "retry_test_duration")
-    private Integer retryTestDuration; // Duration (in hours) to wait before retrying the test
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Campaign)) {
+            return false;
+        }
+        return id != null && id.equals(((Campaign) o).id);
+    }
 
-    @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Course> courses = new ArrayList<>();
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
 }

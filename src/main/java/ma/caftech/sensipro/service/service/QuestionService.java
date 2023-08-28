@@ -1,7 +1,7 @@
 package ma.caftech.sensipro.service.service;
 
 import ma.caftech.sensipro.domain.Question;
-import ma.caftech.sensipro.wrapper.QuestionWrapper;
+import ma.caftech.sensipro.dto.QuestionDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import java.util.List;
@@ -9,20 +9,19 @@ import java.util.Map;
 
 public interface QuestionService {
 
-    ResponseEntity<String> createQuestion(Map<String,Object> requestMap);
+    void createQuestion(Map<String,Object> requestMap);
 
-    ResponseEntity<String> editQuestion(Map<String,Object> requestMap);
+    void editQuestion(Map<String,Object> requestMap);
 
-    ResponseEntity<List<QuestionWrapper>> getQuestionsByCourse(Integer courseId);
+    Question findQuestion(Integer id);
 
+    Page<QuestionDTO> getAllQuestions(int page, int size, String questionCodeFilter, Integer languageId, Integer courseId, String type, String sortAttribute, String sortDirection);
 
-    ResponseEntity<Boolean> validateResponse(Map<String, Object> requestMap);
+    List<QuestionDTO> getQuestionsByCourse(Integer courseId);
 
-    ResponseEntity<List<String>> getAnswer(Integer idQuestion);
+    Boolean validateResponse(Map<String, Object> requestMap);
 
-        ResponseEntity<Map<String, Object>> findQuestion(Integer id);
+    List<String> getAnswer(Integer idQuestion);
 
-    ResponseEntity<String> deleteQuestion(Integer id);
-
-    ResponseEntity<Page<QuestionWrapper>>getAllQuestions(int page, int size, String questionCodeFilter, Integer languageId, Integer courseId, String type, String sortAttribute, String sortDirection);
+    void deleteQuestions(List<Integer> ids);
 }

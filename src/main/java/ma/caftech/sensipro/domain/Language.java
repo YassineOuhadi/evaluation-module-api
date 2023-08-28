@@ -1,11 +1,7 @@
 package ma.caftech.sensipro.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
-import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.DynamicUpdate;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -13,8 +9,6 @@ import java.util.List;
 
 @Data
 @Entity
-@DynamicUpdate
-@DynamicInsert
 @Table(name = "language")
 public class Language implements Serializable {
 

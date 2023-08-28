@@ -21,7 +21,7 @@ public class CampaignUser {
     @Id
     @ManyToOne
     @JoinColumn(name = "user_id")
-    private User user;
+    private AsUser user;
 
     @Column(name = "is_completed", columnDefinition = "boolean default false")
     private boolean isCompleted;

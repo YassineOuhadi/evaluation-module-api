@@ -2,15 +2,11 @@ package ma.caftech.sensipro.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.DynamicUpdate;
 import javax.persistence.*;
 import java.io.Serializable;
 
 @Data
 @Entity
-@DynamicUpdate
-@DynamicInsert
 @Table(name = "option")
 public class Option implements Serializable {
 
@@ -28,7 +24,7 @@ public class Option implements Serializable {
     private boolean isCorrect;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "que_fk", nullable = false)
+    @JoinColumn(name = "question_fk", nullable = false)
     @JsonIgnore
     private ChoiceQuestion choiceQuestion;
 }

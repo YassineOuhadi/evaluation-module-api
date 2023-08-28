@@ -1,8 +1,6 @@
 package ma.caftech.sensipro.domain;
 
 import lombok.Data;
-import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.DynamicUpdate;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,20 +8,16 @@ import javax.persistence.*;
 
 @Data
 @Entity
-@DynamicUpdate
-@DynamicInsert
-@Table(name = "fill_blanks_que")
+@Table(name = "fill_blanks_question")
 public class FillBlanksQuestion extends Question implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Column(name = "is_drag_words", nullable = true)
+    @Column(name = "is_drag_words", nullable = true, columnDefinition = "boolean default false")
     private boolean isDragWords;
 
-    public String transformTextWithAsterisks() {
-        String text = getText();
-        String transformedText = text.replaceAll("\\*\\*([^*]+)\\*\\*", "****");
-        return transformedText;
+    public FillBlanksQuestion() {
+        setType(QuestionType.FILL_BLANKS);
     }
 
     public String transformTextWithoutAsterisks() {
@@ -37,9 +31,8 @@ public class FillBlanksQuestion extends Question implements Serializable {
         String text = getText();
         int start = 0;
         int asterisksStart = text.indexOf("**", start);
-
         while (asterisksStart != -1) {
-            int asterisksEnd = text.indexOf("**", asterisksStart + 2);//** a la fin
+            int asterisksEnd = text.indexOf("**", asterisksStart + 2);
             if (asterisksEnd == -1) {
                 break;
             }
@@ -48,7 +41,6 @@ public class FillBlanksQuestion extends Question implements Serializable {
             start = asterisksEnd + 2;
             asterisksStart = text.indexOf("**", start);
         }
-
         return blocks;
     }
 

@@ -20,7 +20,7 @@ public class FinalExam { // user exam session, possible redo exam
 
     @ManyToOne(optional = false) // This enforces the constraint
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private AsUser user;
 
     @ManyToOne(optional = false) // This enforces the constraint
     @JoinColumn(name = "campaign_id", nullable = false)
@@ -35,17 +35,6 @@ public class FinalExam { // user exam session, possible redo exam
     @Column(name = "exam_score", columnDefinition = "double default 0")
     private double examScore; // Exam score (in %)
 
-    /*
-    @JsonIgnore
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "used_question",
-            joinColumns = @JoinColumn(name = "final_exam_id"),
-            inverseJoinColumns = @JoinColumn(name = "question_id")
-    )
-    private Set<Question> usedQuestions = new HashSet<>();
-    */
-
     @Override
     public int hashCode() {
         return Objects.hash(id);
@@ -58,8 +47,4 @@ public class FinalExam { // user exam session, possible redo exam
         FinalExam finalExam = (FinalExam) o;
         return Objects.equals(id, finalExam.id);
     }
-
-
-    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL)
-    private Set<ExamQuestion> examQuestions = new HashSet<>();
 }

@@ -38,16 +38,6 @@ public class QuizRest {
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    @PostMapping(path = "/endExam")
-    public ResponseEntity<Map<String, Object>> endExam(@RequestParam(required = true) Integer examId) {
-        try {
-            return examService.endExam(examId);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
     @GetMapping(path = "/canTake")
     public ResponseEntity<Map<String, Object>> canUserTakeExam(@RequestParam(required = true) Integer campaignId,@RequestParam(required = true) Integer userId) {
         try {
@@ -57,4 +47,16 @@ public class QuizRest {
         }
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    /*
+    @PostMapping(path = "/endExam")
+    public ResponseEntity<Map<String, Object>> endExam(@RequestParam(required = true) Integer examId) {
+        try {
+            return examService.endExam(examId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+     */
 }
