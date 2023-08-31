@@ -21,7 +21,7 @@ public class Option implements Serializable {
     private String text;
 
     @Column(name = "is_correct", nullable = false)
-    private boolean isCorrect;
+    private Boolean isCorrect;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_fk", nullable = false)

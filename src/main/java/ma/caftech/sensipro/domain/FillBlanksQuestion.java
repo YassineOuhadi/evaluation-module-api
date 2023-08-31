@@ -14,10 +14,16 @@ public class FillBlanksQuestion extends Question implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Column(name = "is_drag_words", nullable = true, columnDefinition = "boolean default false")
-    private boolean isDragWords;
+    private Boolean isDragWords;
 
     public FillBlanksQuestion() {
         setType(QuestionType.FILL_BLANKS);
+    }
+
+    public String transformTextWithAsterisks() {
+        String text = getText();
+        String transformedText = text.replaceAll("\\*\\*([^*]+)\\*\\*", "****");
+        return transformedText;
     }
 
     public String transformTextWithoutAsterisks() {
@@ -26,7 +32,10 @@ public class FillBlanksQuestion extends Question implements Serializable {
         return transformedText;
     }
 
-    public List<String> extractBlocksFromText() {
+    public List<String> extractBlocksFromText(boolean isByOrder) {
+
+        // order
+
         List<String> blocks = new ArrayList<>();
         String text = getText();
         int start = 0;

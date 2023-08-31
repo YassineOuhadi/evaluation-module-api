@@ -25,6 +25,7 @@ public class QueServiceTest {
     @Test
     public void testCreateQue_Success() {
         Map<String, Object> requestMap = new HashMap<>();
+
         requestMap.put("type", "TRUE_FALSE");
         requestMap.put("title", "Sample Title");
         requestMap.put("code", "ABC001");

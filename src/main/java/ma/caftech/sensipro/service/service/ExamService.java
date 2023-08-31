@@ -1,16 +1,18 @@
 package ma.caftech.sensipro.service.service;
 
+import ma.caftech.sensipro.dto.QuestionDTO;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
 import java.util.Map;
 
 public interface ExamService {
 
-    ResponseEntity<Map<String, Object>> beginExam(Map<String, Object> requestMap);
+    List<QuestionDTO> beginExam(Map<String, Object> requestMap);
 
-    ResponseEntity<Map<String, Object>> canUserTakeExam(Integer campaignId, Integer userId);
+    Map<String, Object> canUserTakeExam(Integer campaignProgressId);
 
-    ResponseEntity<Boolean> validateResponse(Map<String, Object> requestMap);
+    Map<String, Object> validateResponse(Map<String, Object> requestMap);
 
-    //ResponseEntity<Map<String, Object>> endExam(Integer examId);
+    Map<String, Object> endExam(Integer campaignProgressId);
 }

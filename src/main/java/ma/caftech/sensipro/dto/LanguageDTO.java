@@ -17,5 +17,4 @@ public class LanguageDTO {
         dto.setName(language.getName());
         return dto;
     }
-
 }

@@ -26,11 +26,11 @@ public class Campaign implements Serializable {
     @Column(columnDefinition = "integer default 3")
     private Integer maxAttemptsAllowed;
 
-    @Column(name = "required_exam_score", columnDefinition = "double default 0")
-    private double archivingScore; // %
+    @Column(name = "required_exam_score", columnDefinition = "double default 0.0")
+    private double archivingScore; //%
 
     @JsonIgnore
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany
     @JoinTable(
             name = "rel_campaign__courses",
             joinColumns = @JoinColumn(name = "campaign_id"),

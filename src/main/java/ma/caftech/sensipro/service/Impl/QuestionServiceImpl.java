@@ -2,6 +2,7 @@ package ma.caftech.sensipro.service.Impl;
 
 import ma.caftech.sensipro.constants.SystemConstants;
 import ma.caftech.sensipro.dto.*;
+import ma.caftech.sensipro.mapper.QuestionMapper;
 import ma.caftech.sensipro.repository.LanguageRepository;
 import ma.caftech.sensipro.repository.OptionRepository;
 import ma.caftech.sensipro.repository.QuestionRepository;
@@ -13,7 +14,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.*;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -45,6 +45,8 @@ public class QuestionServiceImpl implements QuestionService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Autowired
+    private QuestionMapper questionMapper;
 
     @Override
     public void createQuestion(Map<String, Object> requestMap) throws ValidationException {
@@ -52,19 +54,16 @@ public class QuestionServiceImpl implements QuestionService {
         try {
             if (validateQue(requestMap)) {
                 Optional<Language> optionalLanguage = languageRepository.findById((Integer) requestMap.get("languageId"));
-                if (!optionalLanguage.isPresent()) {
+                if (!optionalLanguage.isPresent())
                     throw new ValidationException("Language id does not exist");
-                }
 
-                if (!Objects.isNull(questionRepository.findByCode((String) requestMap.get("code")))) {
+                if (!Objects.isNull(questionRepository.findByCode((String) requestMap.get("code"))))
                     throw new ValidationException("Question code must be unique.");
-                }
 
                 QuestionDTO questionDTO = getQuestionDTOFromMap(requestMap, false);
-                Question newQuestion = mapQuestionDTOToEntity(questionDTO);
+                Question newQuestion = questionMapper.toQuestion(questionDTO); // Use the toQuestion method
                 newQuestion.setLanguage(optionalLanguage.get());
                 questionRepository.save(newQuestion);
-
                 List<Integer> coursesIds = (List<Integer>) requestMap.get("coursesIds");
                 if (coursesIds != null && !coursesIds.isEmpty()) {
                     for (Integer courseId : coursesIds) {
@@ -80,11 +79,8 @@ public class QuestionServiceImpl implements QuestionService {
             } else {
                 throw new ValidationException(SystemConstants.INVALID_DATA);
             }
-        } catch (DataAccessException dae) {
-            throw dae;
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new ValidationException(SystemConstants.SOMETHING_WENT_WRONG);
+            throw new RuntimeException(SystemConstants.SOMETHING_WENT_WRONG);
         }
     }
 
@@ -117,23 +113,22 @@ public class QuestionServiceImpl implements QuestionService {
         switch (questionType) {
             case TRUE_FALSE:
                 dto = new TrueFalseQuestionDTO();
-                ((TrueFalseQuestionDTO) dto).setCorrect((Boolean) requestMap.get("isCorrect"));
+                ((TrueFalseQuestionDTO) dto).setIsCorrect((Boolean) requestMap.get("isCorrect"));
                 break;
             case CHOICE:
                 dto = new ChoiceQuestionDTO();
-                ((ChoiceQuestionDTO) dto).setMultipleChoice((Boolean) requestMap.get("isMultipleChoice"));
+                ((ChoiceQuestionDTO) dto).setIsMultipleChoice((Boolean) requestMap.get("isMultipleChoice"));
                 JSONArray optionsArray = new JSONArray((List<Object>) requestMap.get("options"));
                 List<Option> options = new ArrayList<>();
                 for (int i = 0; i < optionsArray.length(); i++) {
                     JSONObject optionJson = optionsArray.getJSONObject(i);
                     String optionText = optionJson.getString("text");
                     boolean isCorrect = optionJson.getBoolean("isCorrect");
-                    //Integer optionId = optionJson.has("id") ? optionJson.getInt("id") : null;
                     if (optionText != null && !optionText.isEmpty()) {
                         Option option = new Option();
                         if(isEdit) option.setId(optionJson.getInt("id")); // Set the option ID if available
                         option.setText(optionText);
-                        option.setCorrect(isCorrect);
+                        option.setIsCorrect(isCorrect);
                         options.add(option);
                     }
                 }
@@ -144,7 +139,7 @@ public class QuestionServiceImpl implements QuestionService {
                 break;
             case FILL_BLANKS:
                 dto = new FillBlanksQuestionDTO();
-                ((FillBlanksQuestionDTO) dto).setDragWords((Boolean) requestMap.get("isDragWords"));
+                ((FillBlanksQuestionDTO) dto).setIsDragWords((Boolean) requestMap.get("isDragWords"));
                 break;
             default:
                 dto = new QuestionDTO();
@@ -155,38 +150,14 @@ public class QuestionServiceImpl implements QuestionService {
         dto.setCorrectAnswerTip((String) requestMap.get("correctAnswerTip"));
         dto.setIncorrectAnswerTip((String) requestMap.get("incorrectAnswerTip"));
         dto.setType(questionType);
-        return dto;
-    }
 
-    private Question mapQuestionDTOToEntity(QuestionDTO questionDTO) {
-        Question newQuestion;
-        switch (questionDTO.getType()) {
-            case TRUE_FALSE:
-                newQuestion = new TrueFalseQuestion();
-                ((TrueFalseQuestion) newQuestion).setCorrect(((TrueFalseQuestionDTO) questionDTO).isCorrect());
-                break;
-            case CHOICE:
-                newQuestion = new ChoiceQuestion();
-                ((ChoiceQuestion) newQuestion).setMultipleChoice(((ChoiceQuestionDTO) questionDTO).isMultipleChoice());
-                ChoiceQuestionDTO choiceQuestionDTO = (ChoiceQuestionDTO) questionDTO;
-                List<Option> options = choiceQuestionDTO.getOptions();
-                for (Option option : options)
-                    option.setChoiceQuestion((ChoiceQuestion) newQuestion);
-                ((ChoiceQuestion) newQuestion).setOptions(options);
-                break;
-            case FILL_BLANKS:
-                newQuestion = new FillBlanksQuestion();
-                ((FillBlanksQuestion) newQuestion).setDragWords(((FillBlanksQuestionDTO) questionDTO).isDragWords());
-                break;
-            default:
-                newQuestion = new Question();
-                break;
-        }
-        newQuestion.setCode(questionDTO.getCode());
-        newQuestion.setText(questionDTO.getText());
-        newQuestion.setCorrectAnswerTip(questionDTO.getCorrectAnswerTip());
-        newQuestion.setIncorrectAnswerTip(questionDTO.getIncorrectAnswerTip());
-        return newQuestion;
+        List<Integer> coursesIds = (List<Integer>) requestMap.get("coursesIds");
+        Set<CourseDTO> courseDTOs = coursesIds.stream()
+                .map(courseId -> CourseDTO.fromCourse(courseRepository.findById(courseId).orElse(null)))
+                .collect(Collectors.toSet());
+        dto.setCourses(courseDTOs);
+
+        return dto;
     }
 
     @Override
@@ -199,10 +170,8 @@ public class QuestionServiceImpl implements QuestionService {
                 if (optionalQuestion.isPresent()) {
                     if (validateQue(requestMap)) {
                         Question existingQuestion = optionalQuestion.get();
-                        QuestionDTO questionDTO = getQuestionDTOFromMap(requestMap,true);
+                        QuestionDTO questionDTO = getQuestionDTOFromMap(requestMap, true);
                         updateQuestionFromDTO(existingQuestion, questionDTO);
-                        List<Integer> coursesIds = (List<Integer>) requestMap.get("coursesIds");
-                        handleAssociations(existingQuestion, questionDTO, coursesIds);
                     } else {
                         throw new ValidationException(SystemConstants.INVALID_DATA);
                     }
@@ -210,11 +179,8 @@ public class QuestionServiceImpl implements QuestionService {
                     throw new ValidationException("Question not found.");
                 }
             }
-        } catch (DataAccessException dae) {
-            throw dae;
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new ValidationException(SystemConstants.SOMETHING_WENT_WRONG);
+            throw new RuntimeException(SystemConstants.SOMETHING_WENT_WRONG);
         }
     }
 
@@ -223,15 +189,12 @@ public class QuestionServiceImpl implements QuestionService {
         question.setText(questionDTO.getText());
         question.setCorrectAnswerTip(questionDTO.getCorrectAnswerTip());
         question.setIncorrectAnswerTip(questionDTO.getIncorrectAnswerTip());
-        //Optional<Language> optionalLanguage = languageRepository.findById(questionDTO.getLanguage().getId());
-        //optionalLanguage.ifPresent(language -> question.setLanguage(language));
         if (question instanceof TrueFalseQuestion) {
-            ((TrueFalseQuestion) question).setCorrect(((TrueFalseQuestionDTO) questionDTO).isCorrect());
+            ((TrueFalseQuestion) question).setIsCorrect(((TrueFalseQuestionDTO) questionDTO).getIsCorrect());
         }
         else if (question instanceof ChoiceQuestion) {
             ChoiceQuestion choiceQuestion = (ChoiceQuestion) question;
-            choiceQuestion.setMultipleChoice(((ChoiceQuestionDTO) questionDTO).isMultipleChoice());
-            //choiceQuestion.setOptions(((ChoiceQuestionDTO) questionDTO).getOptions());
+            choiceQuestion.setIsMultipleChoice(((ChoiceQuestionDTO) questionDTO).getIsMultipleChoice());
             for (Option existingOption : new ArrayList<>(choiceQuestion.getOptions())) {
                 boolean existsInRequest = ((ChoiceQuestionDTO) questionDTO).getOptions().stream()
                         .anyMatch(optionMap -> optionMap.getId() != null && optionMap.getId().equals(existingOption.getId()));
@@ -242,56 +205,57 @@ public class QuestionServiceImpl implements QuestionService {
             }
             for (Option optionMap : ((ChoiceQuestionDTO) questionDTO).getOptions()) {
                 Integer optionId = optionMap.getId();
-                boolean isCorrect = optionMap.isCorrect();
+                boolean isCorrect = optionMap.getIsCorrect();
                 String optionText = optionMap.getText();
                 Option existingOption = choiceQuestion.getOptions().stream()
                         .filter(option -> option.getId().equals(optionId))
                         .findFirst()
                         .orElse(null);
                 if (existingOption != null) {
-                    existingOption.setCorrect(isCorrect);
+                    existingOption.setIsCorrect(isCorrect);
                     existingOption.setText(optionText);
                 } else {
                     Option newOption = new Option();
-                    newOption.setCorrect(isCorrect);
+                    newOption.setIsCorrect(isCorrect);
                     newOption.setText(optionText);
                     newOption.setChoiceQuestion(choiceQuestion);
                     choiceQuestion.getOptions().add(newOption);
                 }
             }
         } else if (question instanceof FillBlanksQuestion) {
-            ((FillBlanksQuestion) question).setDragWords(((FillBlanksQuestionDTO) questionDTO).isDragWords());
+            ((FillBlanksQuestion) question).setIsDragWords(((FillBlanksQuestionDTO) questionDTO).getIsDragWords());
         }
-        questionRepository.save(question);
-    }
 
-    private void handleAssociations(Question question, QuestionDTO questionDTO, List<Integer> coursesIds) {
         Set<Course> existingCourses = question.getCourses();
         Set<Course> coursesToAdd = new HashSet<>();
         for (Course existingCourse : existingCourses) {
-            if (!coursesIds.contains(existingCourse.getId())) {
+            boolean existsInDTO = questionDTO.getCourses().stream()
+                    .anyMatch(courseDTO -> courseDTO.getId().equals(existingCourse.getId()));
+            if (!existsInDTO) {
                 existingCourse.getQuestions().remove(question);
                 courseRepository.save(existingCourse);
             }
         }
-        for (Integer courseId : coursesIds) {
-            Course course = courseRepository.findById(courseId).orElse(null);
+        for (CourseDTO courseDTO : questionDTO.getCourses()) {
+            Course course = courseRepository.findById(courseDTO.getId()).orElse(null);
             if (course != null) {
                 if (!existingCourses.contains(course)) {
                     course.getQuestions().add(question);
                     coursesToAdd.add(course);
                 }
             } else {
-                log.warn("Course with id {} does not exist. Skipping association.", courseId);
+                log.warn("Course with id {} does not exist. Skipping association.", courseDTO.getId());
             }
         }
         for (Course courseToAdd : coursesToAdd) {
             courseRepository.save(courseToAdd);
         }
+        questionRepository.save(question);
     }
 
     @Override
     public List<QuestionDTO> getQuestionsByCourse(Integer courseId) {
+        log.info("Inside getQuestionsByCourse {}", courseId);
         List<QuestionDTO> questionDTOs = new ArrayList<>();
 
         try {
@@ -299,7 +263,7 @@ public class QuestionServiceImpl implements QuestionService {
             if (optionalCourse.isPresent()) {
                 Course course = optionalCourse.get();
                 questionDTOs.addAll(course.getQuestions().stream()
-                        .map(question -> mapQuestionToDTO(question))
+                        .map(question -> questionMapper.toQuestionDTO(question))
                         .collect(Collectors.toList()));
                 Integer count = course.getNumberOfQuestionsInQuiz();
                 if (questionDTOs.size() < count) {
@@ -318,7 +282,7 @@ public class QuestionServiceImpl implements QuestionService {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(SystemConstants.SOMETHING_WENT_WRONG);
         }
         return questionDTOs;
     }
@@ -327,7 +291,7 @@ public class QuestionServiceImpl implements QuestionService {
     public Page<QuestionDTO> getAllQuestions(
             int page, int size, String questionCodeFilter, Integer languageId, Integer courseId, String type,
             String sortAttribute, String sortDirection) {
-
+        log.info("Inside getAllQuestions {}");
         List<Question> allQuestions;
         TypedQuery<Question> typedQuery;
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -346,8 +310,6 @@ public class QuestionServiceImpl implements QuestionService {
 
         if (languageId != null && languageId > 0)
             predicate = cb.and(predicate, cb.equal(root.get("language").get("id"), languageId));
-
-
 
         if (type != null && !type.isEmpty()) {
             try {
@@ -380,10 +342,11 @@ public class QuestionServiceImpl implements QuestionService {
         int startIdx = Math.min(page * size, allQuestions.size());
         int endIdx = Math.min((page + 1) * size, allQuestions.size());
         List<Question> paginatedQuestions = allQuestions.subList(startIdx, endIdx);
-        // Convert questions to QuestionDTO
+
         List<QuestionDTO> questionDTOs = paginatedQuestions.stream()
-                .map(this::mapQuestionToDTO)
+                .map(question -> questionMapper.toQuestionDTO(question))
                 .collect(Collectors.toList());
+
         // Create Page<QuestionDTO>
         Pageable pageable = PageRequest.of(page, size);
         Page<QuestionDTO> questionDTOPage = new PageImpl<>(questionDTOs, pageable, totalCount);
@@ -391,23 +354,12 @@ public class QuestionServiceImpl implements QuestionService {
         return new PageImpl<>(questionDTOs, pageable, totalCount);
     }
 
-    private QuestionDTO mapQuestionToDTO(Question question) {
-        if (question instanceof ChoiceQuestion) {
-            return ChoiceQuestionDTO.fromChoiceQuestionDTO((ChoiceQuestion) question);
-        } else if (question instanceof TrueFalseQuestion) {
-            return TrueFalseQuestionDTO.fromTrueFalseQuestion((TrueFalseQuestion) question);
-        } else if (question instanceof FillBlanksQuestion) {
-            return FillBlanksQuestionDTO.fromFillBlanksQuestion((FillBlanksQuestion) question);
-        }
-        return null;
-    }
-
     private List<QuestionDTO> getUnusedQuestionDTOs(int count) {
         List<QuestionDTO> unusedQuestionDTOs = new ArrayList<>();
         List<Question> allQuestions = questionRepository.findAll();
         for (Question question : allQuestions) {
             if (question.getCourses().isEmpty()) {
-                unusedQuestionDTOs.add(mapQuestionToDTO(question));
+                unusedQuestionDTOs.add(questionMapper.toQuestionDTO(question));
                 if (unusedQuestionDTOs.size() >= count) {
                     break;
                 }
@@ -424,34 +376,32 @@ public class QuestionServiceImpl implements QuestionService {
             Optional<Question> question = questionRepository.findById(id);
             return question.orElse(null);
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new RuntimeException(SystemConstants.SOMETHING_WENT_WRONG);
         }
     }
 
     @Override
-    public Boolean validateResponse(Map<String, Object> requestMap) {
-        log.info("Inside validate answer {}", requestMap);
+    public Map<String, Object> validateResponse(Map<String, Object> requestMap) {
+        log.info("Inside validate response {}", requestMap);
         try {
+            Map<String, Object> response = new HashMap<>();
             if (requestMap.containsKey("questionId")) {
                 Integer questionId = (Integer) requestMap.get("questionId");
                 Optional<Question> question = questionRepository.findById(questionId);
                 if (question.isEmpty())
-                    return false;
+                    throw new IllegalArgumentException("Question not found.");
 
                 if (question.get() instanceof TrueFalseQuestion) {
                     TrueFalseQuestion trueFalseQuestion = (TrueFalseQuestion) question.get();
-                    boolean correctAnswer = trueFalseQuestion.isCorrect();
+                    boolean correctAnswer = trueFalseQuestion.getIsCorrect();
                     Boolean isCorrectValue = (Boolean) requestMap.get("isCorrect");
                     boolean userAnswer = isCorrectValue.booleanValue();
-                    //boolean userAnswer = Boolean.parseBoolean(isCorrectString);
-                    return userAnswer == correctAnswer;
-                }
-
-                else if (question.get() instanceof ChoiceQuestion) {
+                    response.put("isCorrectAnswer", userAnswer == correctAnswer);
+                } else if (question.get() instanceof ChoiceQuestion) {
                     ChoiceQuestion choiceQuestion = (ChoiceQuestion) question.get();
                     List<Option> options = choiceQuestion.getOptions();
                     if (requestMap.containsKey("options")) {
+                        boolean isCorrectAnswer = true;
                         JSONArray optionsArray = new JSONArray((List<Object>) requestMap.get("options"));
                         for (int i = 0; i < optionsArray.length(); i++) {
                             JSONObject optionJson = optionsArray.getJSONObject(i);
@@ -459,94 +409,69 @@ public class QuestionServiceImpl implements QuestionService {
                             boolean userAnswer = optionJson.getBoolean("isCorrect");
                             Option actualOption = options.stream().filter(option -> option.getId().equals(optionId)).findFirst().orElse(null);
                             if (actualOption != null) {
-                                if (actualOption.isCorrect() != userAnswer) {
-                                    return false;
+                                if (actualOption.getIsCorrect() != userAnswer) {
+                                    isCorrectAnswer = false;
                                 }
                             }
                         }
-                        return true;
+                        response.put("isCorrectAnswer", isCorrectAnswer);
                     }
-                }
-
-                else if (question.get() instanceof FillBlanksQuestion) {
+                } else if (question.get() instanceof FillBlanksQuestion) {
                     FillBlanksQuestion fillBlanksQuestion = (FillBlanksQuestion) question.get();
-                    List<String> blocks = fillBlanksQuestion.extractBlocksFromText();
+                    List<String> blocks = fillBlanksQuestion.extractBlocksFromText(true);
                     if (requestMap.containsKey("blocks")) {
+                        boolean isCorrectAnswer = true;
                         List<Map<String, Object>> userBlocks = (List<Map<String, Object>>) requestMap.get("blocks");
                         if (userBlocks.size() != blocks.size()) {
-                            return false;
+                            isCorrectAnswer = false;
                         }
                         for (int i = 0; i < userBlocks.size(); i++) {
                             Map<String, Object> userBlock = userBlocks.get(i);
                             int blockNumber = (int) userBlock.get("blockNumber");
                             String blockText = (String) userBlock.get("text");
-                            if (blockText.trim().isEmpty()) return false;
+                            if (blockText.trim().isEmpty()) isCorrectAnswer = false;
                             if (blockNumber > 0 && blockNumber <= blocks.size()) {
                                 String originalBlock = blocks.get(blockNumber - 1);
-                                try {
-                                    RestTemplate restTemplate = new RestTemplate();
-                                    String apiUrl = "http://localhost:5000/compare";
-                                    HttpHeaders headers = new HttpHeaders();
-                                    headers.setContentType(MediaType.APPLICATION_JSON);
-                                    Map<String, Object> requestBody = new HashMap<>();
-                                    requestBody.put("user_answer", blockText);
-                                    requestBody.put("true_answer", originalBlock);
-                                    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-                                    ResponseEntity<Map> response = restTemplate.postForEntity(apiUrl, entity, Map.class);
-                                    if (response.getStatusCode().is2xxSuccessful()) {
-                                        boolean isAnswerCorrect = (boolean) response.getBody().get("is_similar");
-                                        if(!isAnswerCorrect) {
-                                            return false;
+                                if (!isExternalApiRunning()) {
+                                    isCorrectAnswer = validateResponseLocally(originalBlock, blockText);
+                                } else {
+                                    try {
+                                        RestTemplate restTemplate = new RestTemplate();
+                                        String apiUrl = "http://localhost:5000/compare";
+                                        HttpHeaders headers = new HttpHeaders();
+                                        headers.setContentType(MediaType.APPLICATION_JSON);
+                                        Map<String, Object> requestBody = new HashMap<>();
+                                        requestBody.put("user_answer", blockText);
+                                        requestBody.put("true_answer", originalBlock);
+                                        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+                                        ResponseEntity<Map> responseFromFlask = restTemplate.postForEntity(apiUrl, entity, Map.class);
+                                        if (responseFromFlask.getStatusCode().is2xxSuccessful()) {
+                                            boolean isAnswerCorrect = (boolean) responseFromFlask.getBody().get("is_similar");
+                                            if(!isAnswerCorrect) {
+                                                isCorrectAnswer = false;
+                                            }
                                         }
+                                    } catch (Exception e) {
+                                        isCorrectAnswer = validateResponseLocally(originalBlock, blockText);
                                     }
-                                } catch (Exception e) {
-                                    throw new RuntimeException(e);
                                 }
                             }
                         }
-                        return true;
+                        response.put("isCorrectAnswer", isCorrectAnswer);
                     }
                 }
+                response.put("responseList", getQuestionAnswer(questionId));
+                return response;
             }
-            return false;
+            throw new IllegalArgumentException("Invalid requestMap from validateResponse.");
         } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+            throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public List<String> getAnswer(Integer idQuestion) {
-        List<String> response = new ArrayList<>();
-        try {
-            Optional<Question> optionalQuestion = questionRepository.findById(idQuestion);
-            if (optionalQuestion.isPresent()) {
-                Question question = optionalQuestion.get();
-                if (question instanceof ChoiceQuestion) {
-                    ChoiceQuestion choiceQuestion = (ChoiceQuestion) question;
-                    List<Option> options = choiceQuestion.getOptions();
-                    for (Option option : options) {
-                        if (option.isCorrect()) {
-                            response.add(option.getText());
-                        }
-                    }
-                } else if (question instanceof TrueFalseQuestion) {
-                    TrueFalseQuestion trueFalseQuestion = (TrueFalseQuestion) question;
-                    boolean answer = trueFalseQuestion.isCorrect();
-                    response.add(String.valueOf(answer));
-                } else if (question instanceof FillBlanksQuestion) {
-                    FillBlanksQuestion fillBlanksQuestion = (FillBlanksQuestion) question;
-                    response.add(fillBlanksQuestion.transformTextWithoutAsterisks());
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return response;
     }
 
     @Override
     public void deleteQuestions(List<Integer> ids) {
+        log.info("Inside deleteQuestions {}", ids);
         try {
             List<Question> questionsToDelete = questionRepository.findAllById(ids);
             for (Question questionToDelete : questionsToDelete) {
@@ -562,7 +487,85 @@ public class QuestionServiceImpl implements QuestionService {
                 questionRepository.delete(questionToDelete);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
+    }
+
+    public List<String> getQuestionAnswer(Integer idQuestion) {
+        List<String> response = new ArrayList<>();
+        try {
+            Optional<Question> optionalQuestion = questionRepository.findById(idQuestion);
+            if (optionalQuestion.isPresent()) {
+                Question question = optionalQuestion.get();
+                if (question instanceof ChoiceQuestion) {
+                    ChoiceQuestion choiceQuestion = (ChoiceQuestion) question;
+                    List<Option> options = choiceQuestion.getOptions();
+                    for (Option option : options) {
+                        if (option.getIsCorrect()) {
+                            response.add(option.getText());
+                        }
+                    }
+                } else if (question instanceof TrueFalseQuestion) {
+                    TrueFalseQuestion trueFalseQuestion = (TrueFalseQuestion) question;
+                    boolean answer = trueFalseQuestion.getIsCorrect();
+                    response.add(String.valueOf(answer));
+                } else if (question instanceof FillBlanksQuestion) {
+                    FillBlanksQuestion fillBlanksQuestion = (FillBlanksQuestion) question;
+                    response.add(fillBlanksQuestion.transformTextWithoutAsterisks());
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return response;
+    }
+
+    private boolean isExternalApiRunning() {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:5000/", String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Boolean validateResponseLocally(String trueAnswer, String userAnswer) {
+        double similarity = findSimilarity(trueAnswer, userAnswer);
+        double similarityThreshold = 0.8;
+        if (similarity >= similarityThreshold) return true;
+        else return false;
+    }
+
+    public static int getLevenshteinDistance(String X, String Y) {
+        int m = X.length();
+        int n = Y.length();
+        int[][] T = new int[m + 1][n + 1];
+        for (int i = 1; i <= m; i++) {
+            T[i][0] = i;
+        }
+        for (int j = 1; j <= n; j++) {
+            T[0][j] = j;
+        }
+        int cost;
+        for (int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                cost = X.charAt(i - 1) == Y.charAt(j - 1) ? 0: 1;
+                T[i][j] = Integer.min(Integer.min(T[i - 1][j] + 1, T[i][j - 1] + 1),
+                        T[i - 1][j - 1] + cost);
+            }
+        }
+        return T[m][n];
+    }
+
+    public static double findSimilarity(String x, String y) {
+        if (x == null || y == null) {
+            throw new IllegalArgumentException("Strings must not be null");
+        }
+        double maxLength = Double.max(x.length(), y.length());
+        if (maxLength > 0) {
+            return (maxLength - getLevenshteinDistance(x, y)) / maxLength;
+        }
+        return 1.0;
     }
 }

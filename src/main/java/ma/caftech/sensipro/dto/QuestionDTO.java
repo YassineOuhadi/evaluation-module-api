@@ -25,11 +25,4 @@ public class QuestionDTO {
     private String incorrectAnswerTip;
     private Set<CourseDTO> courses;
     private LanguageDTO language;
-
-    public Map<String, Object> getLanguageInfo() {
-        Map<String, Object> languageInfo = new HashMap<>();
-        languageInfo.put("id", language.getId());
-        languageInfo.put("name", language.getName());
-        return languageInfo;
-    }
 }

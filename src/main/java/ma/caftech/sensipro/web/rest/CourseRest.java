@@ -1,7 +1,6 @@
 package ma.caftech.sensipro.web.rest;
 
 import ma.caftech.sensipro.constants.SystemConstants;
-import ma.caftech.sensipro.domain.Course;
 import ma.caftech.sensipro.dto.CourseDTO;
 import ma.caftech.sensipro.service.service.CourseService;
 import ma.caftech.sensipro.utils.SystemUtils;
@@ -15,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping(path = "/course")
-public class courseRest {
+public class CourseRest {
 
     @Autowired
     CourseService courseService;

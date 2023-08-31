@@ -19,9 +19,7 @@ public interface QuestionService {
 
     List<QuestionDTO> getQuestionsByCourse(Integer courseId);
 
-    Boolean validateResponse(Map<String, Object> requestMap);
-
-    List<String> getAnswer(Integer idQuestion);
+    Map<String, Object> validateResponse(Map<String, Object> requestMap);
 
     void deleteQuestions(List<Integer> ids);
 }

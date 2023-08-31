@@ -1,5 +1,6 @@
 package ma.caftech.sensipro.web.rest;
 
+import lombok.extern.slf4j.Slf4j;
 import ma.caftech.sensipro.constants.SystemConstants;
 import ma.caftech.sensipro.domain.Question;
 import ma.caftech.sensipro.dto.QuestionDTO;
@@ -12,14 +13,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.xml.bind.ValidationException;
+import javax.validation.ValidationException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping(path = "/question")
-public class questionRest {
+public class QuestionRest {
 
     @Autowired
     QuestionService questionService;
@@ -29,10 +31,11 @@ public class questionRest {
         try {
             questionService.createQuestion(requestMap);
             return SystemUtils.getResponseEntity("Question Created Successfully.", HttpStatus.OK);
-        } catch (DataAccessException dae) {
-            return SystemUtils.getResponseEntity(SystemConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (ValidationException e) {
+            log.error("Error occurred: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Internal server error occurred: {}", e.getMessage());
             return SystemUtils.getResponseEntity(SystemConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -42,10 +45,13 @@ public class questionRest {
         try {
             questionService.editQuestion(requestMap);
             return SystemUtils.getResponseEntity("Question Updated Successfully.", HttpStatus.OK);
+        } catch (ValidationException e) {
+            log.error("Error occurred: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Internal server error occurred: {}", e.getMessage());
+            return SystemUtils.getResponseEntity(SystemConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return SystemUtils.getResponseEntity(SystemConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @GetMapping(path = "/getByCourse")
@@ -54,7 +60,7 @@ public class questionRest {
             List<QuestionDTO> questionDTOs = questionService.getQuestionsByCourse(courseId);
             return new ResponseEntity<>(questionDTOs, HttpStatus.OK);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Internal server error occurred: {}", e.getMessage());
             return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -75,7 +81,7 @@ public class questionRest {
                     page, size, questionCodeFilter, languageId, courseId, type, sortAttribute, sortDirection);
             return new ResponseEntity<>(questionDTOPage, HttpStatus.OK);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Internal server error occurred: {}", e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -90,33 +96,21 @@ public class questionRest {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Internal server error occurred: {}", e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @PostMapping(path = "/validate")
-    public ResponseEntity<Boolean> validateResponse(@RequestBody(required = true) Map<String, Object> requestMap) {
+    public ResponseEntity<Map<String, Object>> validateResponse(@RequestBody(required = true) Map<String, Object> requestMap) {
         try {
-            Boolean validationResult = questionService.validateResponse(requestMap);
-            return new ResponseEntity<>(validationResult, HttpStatus.OK);
+            Map<String, Object> validationResponse = questionService.validateResponse(requestMap);
+            return new ResponseEntity<>(validationResponse, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            log.error("Error occurred: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            e.printStackTrace();
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @GetMapping(path = "/answer")
-    public ResponseEntity<List<String>> getAnswer(@RequestParam(required = true) Integer idQuestion) {
-        try {
-            List<String> answer = questionService.getAnswer(idQuestion);
-            if (!answer.isEmpty()) {
-                return new ResponseEntity<>(answer, HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Internal server error occurred: {}", e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -127,7 +121,7 @@ public class questionRest {
             questionService.deleteQuestions(ids);
             return SystemUtils.getResponseEntity("Questions deleted successfully.", HttpStatus.OK);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Internal server error occurred: {}", e.getMessage());
             return new ResponseEntity<>(SystemConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

@@ -13,7 +13,7 @@ public class ChoiceQuestion extends Question implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Column(name = "is_multiple_choice", nullable = false, columnDefinition = "boolean default false")
-    private boolean isMultipleChoice;
+    private Boolean isMultipleChoice;
 
     @OneToMany(mappedBy = "choiceQuestion", cascade = CascadeType.ALL)
     private List<Option> options;

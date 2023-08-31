@@ -1,6 +1,5 @@
 package ma.caftech.sensipro.web.rest;
 
-import ma.caftech.sensipro.domain.Language;
 import ma.caftech.sensipro.dto.LanguageDTO;
 import ma.caftech.sensipro.service.service.LanguageService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping(path = "/language")
-public class languageRest {
+public class LanguageRest {
 
     @Autowired
     LanguageService languageService;

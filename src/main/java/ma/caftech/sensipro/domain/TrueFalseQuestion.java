@@ -16,7 +16,7 @@ public class TrueFalseQuestion extends Question implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Column(name = "is_correct", nullable = false, columnDefinition = "boolean default false")
-    private boolean isCorrect;
+    private Boolean isCorrect;
 
     public TrueFalseQuestion() {
         setType(QuestionType.TRUE_FALSE);

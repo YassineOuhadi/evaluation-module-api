@@ -2,10 +2,15 @@ package ma.caftech.sensipro.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+
 import javax.persistence.*;
 import java.io.Serializable;
+import java.text.DecimalFormat;
+import java.text.ParseException;
 import java.time.LocalDate;
 
+@Slf4j
 @Entity
 @Table(name = "campaign_progress")
 @Data
@@ -21,8 +26,8 @@ public class CampaignProgress implements Serializable {
     @Column(name = "value", columnDefinition = "integer default 0")
     private Integer value;
 
-    @Column(name = "score", columnDefinition = "integer default 0")
-    private Integer score;
+    @Column(name = "score", columnDefinition = "Double default 0.0")
+    private Double score;
 
     @Column(name = "start_date", columnDefinition = "timestamp default current_timestamp")
     private LocalDate startDate;
