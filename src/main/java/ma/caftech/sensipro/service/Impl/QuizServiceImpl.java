@@ -5,7 +5,7 @@ import ma.caftech.sensipro.domain.*;
 import ma.caftech.sensipro.dto.*;
 import ma.caftech.sensipro.mapper.QuestionMapper;
 import ma.caftech.sensipro.repository.*;
-import ma.caftech.sensipro.service.service.ExamService;
+import ma.caftech.sensipro.service.service.QuizService;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -21,7 +21,7 @@ import java.util.*;
 
 @Slf4j
 @Service
-public class ExamServiceImpl implements ExamService {
+public class QuizServiceImpl implements QuizService {
 
     @Autowired
     UserRepository userRepository;
@@ -114,19 +114,25 @@ public class ExamServiceImpl implements ExamService {
                 Double score = campaignProgress.getScore();
                 Integer numberCorrectAnswers = campaignProgress.getCorrectAnswers();
 
+                boolean isMarkedCorrect = (boolean) requestMap.get("isMarkedCorrect");
+
                 Boolean isCorrect = isResponseCorrect(requestMap);
                 if(isCorrect == null) isCorrect = false;
-                if(campaignProgress.getValue() < 100 && isCorrect) {
-                    numberCorrectAnswers++;
 
+                if(campaignProgress.getValue() < 100 && isMarkedCorrect != isCorrect) {
+                    if(isCorrect) numberCorrectAnswers++;
+                    else numberCorrectAnswers--;
                     score = (double )numberCorrectAnswers / campaignProgress.getLaunchCampaign().getCampaign().getNumberOfQuestionsInExam() * 100;
                     campaignProgress.setCorrectAnswers(numberCorrectAnswers);
                     campaignProgress.setScore(Double.valueOf(df.format(score)));
 
+                    /*
                     if(score >= campaignProgress.getLaunchCampaign().getCampaign().getArchivingScore()) {
                         campaignProgress.setValue(100);
                         campaignProgress.setEndDate(LocalDate.from(LocalDateTime.now()));
                     }
+                     */
+
                     campaignProgressRepository.save(campaignProgress);
                 }
 
@@ -150,6 +156,13 @@ public class ExamServiceImpl implements ExamService {
             }
             CampaignProgress campaignProgress = optionalCampaignProgress.get();
             Double score = campaignProgress.getScore();
+
+            if(score >= campaignProgress.getLaunchCampaign().getCampaign().getArchivingScore()) {
+                campaignProgress.setValue(100);
+                campaignProgress.setEndDate(LocalDate.from(LocalDateTime.now()));
+                campaignProgressRepository.save(campaignProgress);
+            }
+
             Map<String, Object> response = new HashMap<>();
             response.put("score", score);
             boolean isArchived = score >= campaignProgress.getLaunchCampaign().getCampaign().getArchivingScore();

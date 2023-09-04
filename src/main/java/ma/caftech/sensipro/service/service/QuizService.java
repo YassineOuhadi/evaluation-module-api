@@ -1,12 +1,11 @@
 package ma.caftech.sensipro.service.service;
 
 import ma.caftech.sensipro.dto.QuestionDTO;
-import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Map;
 
-public interface ExamService {
+public interface QuizService {
 
     List<QuestionDTO> beginExam(Map<String, Object> requestMap);
 

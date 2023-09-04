@@ -2,7 +2,7 @@ package ma.caftech.sensipro.web.rest;
 
 import lombok.extern.slf4j.Slf4j;
 import ma.caftech.sensipro.dto.QuestionDTO;
-import ma.caftech.sensipro.service.service.ExamService;
+import ma.caftech.sensipro.service.service.QuizService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,15 +15,15 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping(path = "/exam")
-public class ExamRest {
+public class QuizRest {
 
     @Autowired
-    ExamService examService;
+    QuizService quizService;
 
     @PostMapping(path = "/begin")
     public ResponseEntity<List<QuestionDTO>> beginExam(@RequestBody(required = true) Map<String, Object> requestMap) {
         try {
-            List<QuestionDTO> questions = examService.beginExam(requestMap);
+            List<QuestionDTO> questions = quizService.beginExam(requestMap);
             if (questions.isEmpty())
                 return new ResponseEntity<>(Collections.emptyList(), HttpStatus.BAD_REQUEST);
             return new ResponseEntity<>(questions, HttpStatus.OK);
@@ -39,7 +39,7 @@ public class ExamRest {
     @GetMapping(path = "/canTake")
     public ResponseEntity<Map<String, Object>> canUserTakeExam(@RequestParam(required = true) Long campaignProgressId) {
         try {
-            Map<String, Object> response = examService.canUserTakeExam(campaignProgressId);
+            Map<String, Object> response = quizService.canUserTakeExam(campaignProgressId);
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             log.error("Error occurred: {}", e.getMessage());
@@ -53,7 +53,7 @@ public class ExamRest {
     @PostMapping(path = "/validate")
     public ResponseEntity<Map<String, Object>> validateResponse(@RequestBody(required = true) Map<String, Object> requestMap) {
         try {
-            Map<String, Object> validationResponse = examService.validateResponse(requestMap);
+            Map<String, Object> validationResponse = quizService.validateResponse(requestMap);
             return new ResponseEntity<>(validationResponse, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             log.error("Error occurred: {}", e.getMessage());
@@ -67,7 +67,7 @@ public class ExamRest {
     @PostMapping(path = "/endExam")
     public ResponseEntity<Map<String, Object>> endExam(@RequestParam(required = true) Long campaignProgressId) {
         try {
-            Map<String, Object> response = examService.endExam(campaignProgressId);
+            Map<String, Object> response = quizService.endExam(campaignProgressId);
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             log.error("Error occurred: {}", e.getMessage());
