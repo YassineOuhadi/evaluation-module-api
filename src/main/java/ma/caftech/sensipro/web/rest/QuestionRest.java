@@ -55,7 +55,7 @@ public class QuestionRest {
     }
 
     @GetMapping(path = "/getByCourse")
-    public ResponseEntity<List<QuestionDTO>> getQuestionsByCourse(@RequestParam(required = true) Integer courseId) {
+    public ResponseEntity<List<QuestionDTO>> getQuestionsByCourse(@RequestParam(required = true) Long courseId) {
         try {
             List<QuestionDTO> questionDTOs = questionService.getQuestionsByCourse(courseId);
             return new ResponseEntity<>(questionDTOs, HttpStatus.OK);
@@ -87,7 +87,7 @@ public class QuestionRest {
     }
 
     @GetMapping(path = "/find")
-    public ResponseEntity<Question> findQuestion(@RequestParam(required = true) Integer id) {
+    public ResponseEntity<Question> findQuestion(@RequestParam(required = true) Long id) {
         try {
             Question question = questionService.findQuestion(id);
             if (question != null) {
@@ -116,7 +116,7 @@ public class QuestionRest {
     }
 
     @PostMapping(path = "/delete")
-    public ResponseEntity<String> deleteQuestions(@RequestBody List<Integer> ids) {
+    public ResponseEntity<String> deleteQuestions(@RequestBody List<Long> ids) {
         try {
             questionService.deleteQuestions(ids);
             return SystemUtils.getResponseEntity("Questions deleted successfully.", HttpStatus.OK);

@@ -37,7 +37,7 @@ public class ExamRest {
     }
 
     @GetMapping(path = "/canTake")
-    public ResponseEntity<Map<String, Object>> canUserTakeExam(@RequestParam(required = true) Integer campaignProgressId) {
+    public ResponseEntity<Map<String, Object>> canUserTakeExam(@RequestParam(required = true) Long campaignProgressId) {
         try {
             Map<String, Object> response = examService.canUserTakeExam(campaignProgressId);
             return new ResponseEntity<>(response, HttpStatus.OK);
@@ -65,7 +65,7 @@ public class ExamRest {
     }
 
     @PostMapping(path = "/endExam")
-    public ResponseEntity<Map<String, Object>> endExam(@RequestParam(required = true) Integer campaignProgressId) {
+    public ResponseEntity<Map<String, Object>> endExam(@RequestParam(required = true) Long campaignProgressId) {
         try {
             Map<String, Object> response = examService.endExam(campaignProgressId);
             return new ResponseEntity<>(response, HttpStatus.OK);

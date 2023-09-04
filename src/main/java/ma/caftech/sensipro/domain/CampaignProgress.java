@@ -21,7 +21,7 @@ public class CampaignProgress implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", unique = true)
-    private Integer id;
+    private Long id;
 
     @Column(name = "value", columnDefinition = "integer default 0")
     private Integer value;

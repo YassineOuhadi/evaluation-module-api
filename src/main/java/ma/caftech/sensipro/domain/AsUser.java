@@ -16,7 +16,7 @@ public class AsUser implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", unique = true)
-    private Integer id;
+    private Long id;
 
     @ManyToMany(fetch = FetchType.LAZY, mappedBy = "asUsers")
     private Set<LaunchCampaign> launchCampaigns = new HashSet<>();

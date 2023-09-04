@@ -2,6 +2,7 @@ package ma.caftech.sensipro.service.Impl;
 
 import ma.caftech.sensipro.constants.SystemConstants;
 import ma.caftech.sensipro.dto.*;
+import ma.caftech.sensipro.mapper.CourseMapper;
 import ma.caftech.sensipro.mapper.QuestionMapper;
 import ma.caftech.sensipro.repository.LanguageRepository;
 import ma.caftech.sensipro.repository.OptionRepository;
@@ -48,12 +49,18 @@ public class QuestionServiceImpl implements QuestionService {
     @Autowired
     private QuestionMapper questionMapper;
 
+    @Autowired
+    private CourseMapper courseMapper;
+
     @Override
     public void createQuestion(Map<String, Object> requestMap) throws ValidationException {
         log.info("Inside Create Que {}", requestMap);
         try {
             if (validateQue(requestMap)) {
-                Optional<Language> optionalLanguage = languageRepository.findById((Integer) requestMap.get("languageId"));
+
+                Integer languageId = (Integer) requestMap.get("languageId");
+                Optional<Language> optionalLanguage = languageRepository.findById(languageId.longValue());
+
                 if (!optionalLanguage.isPresent())
                     throw new ValidationException("Language id does not exist");
 
@@ -64,16 +71,14 @@ public class QuestionServiceImpl implements QuestionService {
                 Question newQuestion = questionMapper.toQuestion(questionDTO); // Use the toQuestion method
                 newQuestion.setLanguage(optionalLanguage.get());
                 questionRepository.save(newQuestion);
-                List<Integer> coursesIds = (List<Integer>) requestMap.get("coursesIds");
-                if (coursesIds != null && !coursesIds.isEmpty()) {
-                    for (Integer courseId : coursesIds) {
-                        Course course = courseRepository.findById(courseId).orElse(null);
-                        if (course != null) {
-                            course.getQuestions().add(newQuestion);
-                            courseRepository.save(course);
-                        } else {
-                            log.warn("Course with id {} does not exist. Skipping association.", courseId);
-                        }
+
+                for (CourseDTO courseDTO : questionDTO.getCourses()) {
+                    Course course = courseRepository.findById(courseMapper.toCourse(courseDTO).getId()).orElse(null);
+                    if (course != null) {
+                        course.getQuestions().add(newQuestion);
+                        courseRepository.save(course);
+                    } else {
+                        log.warn("Course with id {} does not exist. Skipping association.", courseMapper.toCourse(courseDTO).getId());
                     }
                 }
             } else {
@@ -126,7 +131,7 @@ public class QuestionServiceImpl implements QuestionService {
                     boolean isCorrect = optionJson.getBoolean("isCorrect");
                     if (optionText != null && !optionText.isEmpty()) {
                         Option option = new Option();
-                        if(isEdit) option.setId(optionJson.getInt("id")); // Set the option ID if available
+                        if(isEdit) option.setId(optionJson.getLong("id")); // Set the option ID if available
                         option.setText(optionText);
                         option.setIsCorrect(isCorrect);
                         options.add(option);
@@ -151,9 +156,9 @@ public class QuestionServiceImpl implements QuestionService {
         dto.setIncorrectAnswerTip((String) requestMap.get("incorrectAnswerTip"));
         dto.setType(questionType);
 
-        List<Integer> coursesIds = (List<Integer>) requestMap.get("coursesIds");
-        Set<CourseDTO> courseDTOs = coursesIds.stream()
-                .map(courseId -> CourseDTO.fromCourse(courseRepository.findById(courseId).orElse(null)))
+        List<Integer> courseIds = (List<Integer>) requestMap.get("coursesIds");
+        Set<CourseDTO> courseDTOs = courseIds.stream()
+                .map(courseId -> CourseDTO.fromCourse(courseRepository.findById(courseId.longValue()).orElse(null)))
                 .collect(Collectors.toSet());
         dto.setCourses(courseDTOs);
 
@@ -166,7 +171,7 @@ public class QuestionServiceImpl implements QuestionService {
         try {
             if (requestMap.containsKey("id")) {
                 Integer questionId = (Integer) requestMap.get("id");
-                Optional<Question> optionalQuestion = questionRepository.findById(questionId);
+                Optional<Question> optionalQuestion = questionRepository.findById(questionId.longValue());
                 if (optionalQuestion.isPresent()) {
                     if (validateQue(requestMap)) {
                         Question existingQuestion = optionalQuestion.get();
@@ -204,7 +209,7 @@ public class QuestionServiceImpl implements QuestionService {
                 }
             }
             for (Option optionMap : ((ChoiceQuestionDTO) questionDTO).getOptions()) {
-                Integer optionId = optionMap.getId();
+                Long optionId = optionMap.getId();
                 boolean isCorrect = optionMap.getIsCorrect();
                 String optionText = optionMap.getText();
                 Option existingOption = choiceQuestion.getOptions().stream()
@@ -254,7 +259,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    public List<QuestionDTO> getQuestionsByCourse(Integer courseId) {
+    public List<QuestionDTO> getQuestionsByCourse(Long courseId) {
         log.info("Inside getQuestionsByCourse {}", courseId);
         List<QuestionDTO> questionDTOs = new ArrayList<>();
 
@@ -370,7 +375,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    public Question findQuestion(Integer id) {
+    public Question findQuestion(Long id) {
         log.info("Inside findQuestion {}", id);
         try {
             Optional<Question> question = questionRepository.findById(id);
@@ -387,7 +392,7 @@ public class QuestionServiceImpl implements QuestionService {
             Map<String, Object> response = new HashMap<>();
             if (requestMap.containsKey("questionId")) {
                 Integer questionId = (Integer) requestMap.get("questionId");
-                Optional<Question> question = questionRepository.findById(questionId);
+                Optional<Question> question = questionRepository.findById(questionId.longValue());
                 if (question.isEmpty())
                     throw new IllegalArgumentException("Question not found.");
 
@@ -405,7 +410,7 @@ public class QuestionServiceImpl implements QuestionService {
                         JSONArray optionsArray = new JSONArray((List<Object>) requestMap.get("options"));
                         for (int i = 0; i < optionsArray.length(); i++) {
                             JSONObject optionJson = optionsArray.getJSONObject(i);
-                            int optionId = optionJson.getInt("id");
+                            Long optionId = optionJson.getLong("id");
                             boolean userAnswer = optionJson.getBoolean("isCorrect");
                             Option actualOption = options.stream().filter(option -> option.getId().equals(optionId)).findFirst().orElse(null);
                             if (actualOption != null) {
@@ -460,7 +465,7 @@ public class QuestionServiceImpl implements QuestionService {
                         response.put("isCorrectAnswer", isCorrectAnswer);
                     }
                 }
-                response.put("responseList", getQuestionAnswer(questionId));
+                response.put("responseList", getQuestionAnswer(questionId.longValue()));
                 return response;
             }
             throw new IllegalArgumentException("Invalid requestMap from validateResponse.");
@@ -470,7 +475,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    public void deleteQuestions(List<Integer> ids) {
+    public void deleteQuestions(List<Long> ids) {
         log.info("Inside deleteQuestions {}", ids);
         try {
             List<Question> questionsToDelete = questionRepository.findAllById(ids);
@@ -491,7 +496,7 @@ public class QuestionServiceImpl implements QuestionService {
         }
     }
 
-    public List<String> getQuestionAnswer(Integer idQuestion) {
+    public List<String> getQuestionAnswer(Long idQuestion) {
         List<String> response = new ArrayList<>();
         try {
             Optional<Question> optionalQuestion = questionRepository.findById(idQuestion);

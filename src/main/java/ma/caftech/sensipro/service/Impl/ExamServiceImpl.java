@@ -44,7 +44,7 @@ public class ExamServiceImpl implements ExamService {
     public List<QuestionDTO> beginExam(Map<String, Object> requestMap) {
         log.info("Inside beginExam {}", requestMap);
         Integer campaignProgressId = (Integer) requestMap.get("campaignProgressId");
-        Optional<CampaignProgress> optionalCampaignProgress = campaignProgressRepository.findById(campaignProgressId);
+        Optional<CampaignProgress> optionalCampaignProgress = campaignProgressRepository.findById(campaignProgressId.longValue());
 
         if (optionalCampaignProgress.isEmpty())
             throw new IllegalArgumentException("Campaign progress not found.");
@@ -69,7 +69,7 @@ public class ExamServiceImpl implements ExamService {
     }
 
     @Override
-    public Map<String, Object> canUserTakeExam(Integer campaignProgressId) {
+    public Map<String, Object> canUserTakeExam(Long campaignProgressId) {
         log.info("Inside canUserTakeExam {}", campaignProgressId);
         Optional<CampaignProgress> optionalCampaignProgress = campaignProgressRepository.findById(campaignProgressId);
         if (optionalCampaignProgress.isEmpty())
@@ -98,7 +98,7 @@ public class ExamServiceImpl implements ExamService {
         try {
             Map<String, Object> response = new HashMap<>();
             if (requestMap.containsKey("campaignProgressId")) {
-                Optional<CampaignProgress> optionalCampaignProgress = campaignProgressRepository.findById((Integer) requestMap.get("campaignProgressId"));
+                Optional<CampaignProgress> optionalCampaignProgress = campaignProgressRepository.findById(((Integer) requestMap.get("campaignProgressId")).longValue());
 
                 if (optionalCampaignProgress.isEmpty()) {
                     log.error("Campaign progress not found.");
@@ -131,7 +131,7 @@ public class ExamServiceImpl implements ExamService {
                 }
 
                 response.put("isCorrectAnswer", isCorrect);
-                response.put("responseList", getQuestionAnswer((Integer) requestMap.get("questionId")));
+                response.put("responseList", getQuestionAnswer(((Integer) requestMap.get("questionId")).longValue()));
                 return response;
             }
             throw new IllegalArgumentException("Invalid requestMap from validateResponse.");
@@ -141,7 +141,7 @@ public class ExamServiceImpl implements ExamService {
     }
 
     @Override
-    public Map<String, Object> endExam(Integer campaignProgressId) {
+    public Map<String, Object> endExam(Long campaignProgressId) {
         log.info("Inside end exam {}", campaignProgressId);
         try {
             Optional<CampaignProgress> optionalCampaignProgress = campaignProgressRepository.findById(campaignProgressId);
@@ -152,13 +152,15 @@ public class ExamServiceImpl implements ExamService {
             Double score = campaignProgress.getScore();
             Map<String, Object> response = new HashMap<>();
             response.put("score", score);
+            boolean isArchived = score >= campaignProgress.getLaunchCampaign().getCampaign().getArchivingScore();
+            response.put("isArchived", isArchived);
             return response;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public List<String> getQuestionAnswer(Integer idQuestion) {
+    public List<String> getQuestionAnswer(Long idQuestion) {
         List<String> response = new ArrayList<>();
         try {
             Optional<Question> optionalQuestion = questionRepository.findById(idQuestion);
@@ -220,7 +222,7 @@ public class ExamServiceImpl implements ExamService {
 
     private Boolean isResponseCorrect(Map<String, Object> requestMap) throws JSONException {
         if (requestMap.containsKey("questionId")) {
-            Optional<Question> question = questionRepository.findById((Integer) requestMap.get("questionId"));
+            Optional<Question> question = questionRepository.findById(((Integer) requestMap.get("questionId")).longValue());
             if(question.isPresent()) {
                 if (question.get() instanceof TrueFalseQuestion) {
                     if(requestMap.containsKey("isCorrect")) {
@@ -231,6 +233,8 @@ public class ExamServiceImpl implements ExamService {
 
 
                         Boolean isCorrectValue = (Boolean) requestMap.get("isCorrect");
+
+                        if(isCorrectValue == null) return false;
 
                         boolean userAnswer = isCorrectValue != null && isCorrectValue.booleanValue();
 
@@ -247,7 +251,7 @@ public class ExamServiceImpl implements ExamService {
                         JSONArray optionsArray = new JSONArray((List<Object>) requestMap.get("options"));
                         for (int i = 0; i < optionsArray.length(); i++) {
                             JSONObject optionJson = optionsArray.getJSONObject(i);
-                            int optionId = optionJson.getInt("id");
+                            Long optionId = optionJson.getLong("id");
                             boolean userAnswer = optionJson.getBoolean("isCorrect");
                             Option actualOption = options.stream().filter(option -> option.getId().equals(optionId)).findFirst().orElse(null);
                             if (actualOption != null) {

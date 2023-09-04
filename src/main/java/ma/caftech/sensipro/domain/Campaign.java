@@ -18,7 +18,7 @@ public class Campaign implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", unique = true)
-    private Integer id;
+    private Long id;
 
     @Column(columnDefinition = "integer default 11")
     private Integer numberOfQuestionsInExam;

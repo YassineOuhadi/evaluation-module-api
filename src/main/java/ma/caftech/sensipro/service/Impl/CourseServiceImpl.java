@@ -47,10 +47,10 @@ public class CourseServiceImpl implements CourseService {
         try {
             if (requestMap.containsKey("courseId")) {
                 Integer courseId = (Integer) requestMap.get("courseId");
-                Optional<Course> optionalCourse = courseRepository.findById(courseId);
+                Optional<Course> optionalCourse = courseRepository.findById(courseId.longValue());
                 if (optionalCourse.isPresent()) {
                     Course course = optionalCourse.get();
-                    Integer questionId = (Integer) requestMap.get("questionId");
+                    Long questionId = (Long) requestMap.get("questionId");
                     Optional<Question> optionalQuestion = questionRepository.findById(questionId);
                     if (optionalQuestion.isPresent()) {
                         Question question = optionalQuestion.get();

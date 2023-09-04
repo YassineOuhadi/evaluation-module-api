@@ -19,7 +19,7 @@ public class LaunchCampaign implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", unique = true)
-    private Integer id;
+    private Long id;
 
     @Column(name = "start_date")
     private LocalDate startDate;

@@ -13,13 +13,13 @@ public interface QuestionService {
 
     void editQuestion(Map<String,Object> requestMap);
 
-    Question findQuestion(Integer id);
+    Question findQuestion(Long id);
 
     Page<QuestionDTO> getAllQuestions(int page, int size, String questionCodeFilter, Integer languageId, Integer courseId, String type, String sortAttribute, String sortDirection);
 
-    List<QuestionDTO> getQuestionsByCourse(Integer courseId);
+    List<QuestionDTO> getQuestionsByCourse(Long courseId);
 
     Map<String, Object> validateResponse(Map<String, Object> requestMap);
 
-    void deleteQuestions(List<Integer> ids);
+    void deleteQuestions(List<Long> ids);
 }

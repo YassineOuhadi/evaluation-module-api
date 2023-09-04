@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class QuestionDTO {
 
-    private Integer id;
+    private Long id;
     private String code;
     private Question.QuestionType type;
     private String text;

@@ -8,7 +8,7 @@ import ma.caftech.sensipro.domain.Language;
 @Data
 @NoArgsConstructor
 public class LanguageDTO {
-    private Integer id;
+    private Long id;
     private String name;
 
     public static LanguageDTO fromLanguage(Language language) {

@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 @Data
 @NoArgsConstructor
 public class CourseDTO {
-    private Integer id;
+    private Long id;
     private String name;
     public static CourseDTO fromCourse(Course course) {
         CourseDTO dto = new CourseDTO();

@@ -10,9 +10,9 @@ public interface ExamService {
 
     List<QuestionDTO> beginExam(Map<String, Object> requestMap);
 
-    Map<String, Object> canUserTakeExam(Integer campaignProgressId);
+    Map<String, Object> canUserTakeExam(Long campaignProgressId);
 
     Map<String, Object> validateResponse(Map<String, Object> requestMap);
 
-    Map<String, Object> endExam(Integer campaignProgressId);
+    Map<String, Object> endExam(Long campaignProgressId);
 }
